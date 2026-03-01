@@ -3,13 +3,13 @@ module github.com/infrago/cron-pgsql
 go 1.25.3
 
 require (
-	github.com/infrago/infra v0.0.1
-	github.com/infrago/cron v0.0.1
+	github.com/infrago/cron v0.8.1
+	github.com/infrago/infra v0.8.1
 	github.com/jackc/pgx/v5 v5.7.6
 )
 
 require (
-	github.com/infrago/base v0.0.0-20260208072247-55b8f46c25df // indirect
+	github.com/infrago/base v0.8.1 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
