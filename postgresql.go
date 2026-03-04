@@ -1,4 +1,4 @@
-package cron_pgsql
+package cron_postgres
 
 import (
 	"context"
@@ -10,21 +10,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/infrago/infra"
 	"github.com/infrago/cron"
+	"github.com/infrago/infra"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func init() {
-	infra.Register("pgsql", &pgsqlDriver{})
-	infra.Register("postgres", &pgsqlDriver{})
+	infra.Register("postgres", &postgresDriver{})
+	infra.Register("postgresql", &postgresDriver{})
+	infra.Register("pgsql", &postgresDriver{})
 }
 
 type (
-	pgsqlDriver struct{}
+	postgresDriver struct{}
 
-	pgsqlConnection struct {
+	postgresConnection struct {
 		dsn        string
 		schema     string
 		jobsTable  string
@@ -34,7 +35,7 @@ type (
 	}
 )
 
-func (d *pgsqlDriver) Connection(inst *cron.Instance) (cron.Connection, error) {
+func (d *postgresDriver) Connection(inst *cron.Instance) (cron.Connection, error) {
 	setting := inst.Config.Setting
 	dsn := parseDSN(setting)
 
@@ -58,7 +59,7 @@ func (d *pgsqlDriver) Connection(inst *cron.Instance) (cron.Connection, error) {
 		locksTable = v
 	}
 
-	return &pgsqlConnection{
+	return &postgresConnection{
 		dsn:        dsn,
 		schema:     schema,
 		jobsTable:  jobsTable,
@@ -67,7 +68,7 @@ func (d *pgsqlDriver) Connection(inst *cron.Instance) (cron.Connection, error) {
 	}, nil
 }
 
-func (c *pgsqlConnection) Open() error {
+func (c *postgresConnection) Open() error {
 	pool, err := pgxpool.New(context.Background(), c.dsn)
 	if err != nil {
 		return err
@@ -80,14 +81,14 @@ func (c *pgsqlConnection) Open() error {
 	return c.ensureSchema()
 }
 
-func (c *pgsqlConnection) Close() error {
+func (c *postgresConnection) Close() error {
 	if c.pool != nil {
 		c.pool.Close()
 	}
 	return nil
 }
 
-func (c *pgsqlConnection) Add(name string, job cron.Job) error {
+func (c *postgresConnection) Add(name string, job cron.Job) error {
 	job.Name = name
 	data, err := json.Marshal(job)
 	if err != nil {
@@ -105,7 +106,7 @@ func (c *pgsqlConnection) Add(name string, job cron.Job) error {
 	return err
 }
 
-func (c *pgsqlConnection) Enable(name string) error {
+func (c *postgresConnection) Enable(name string) error {
 	_, err := c.pool.Exec(context.Background(),
 		fmt.Sprintf(
 			`UPDATE %s SET data = jsonb_set(data, '{disabled}', 'false'::jsonb, true), updated_at = now() WHERE name = $1`,
@@ -116,7 +117,7 @@ func (c *pgsqlConnection) Enable(name string) error {
 	return err
 }
 
-func (c *pgsqlConnection) Disable(name string) error {
+func (c *postgresConnection) Disable(name string) error {
 	_, err := c.pool.Exec(context.Background(),
 		fmt.Sprintf(
 			`UPDATE %s SET data = jsonb_set(data, '{disabled}', 'true'::jsonb, true), updated_at = now() WHERE name = $1`,
@@ -127,7 +128,7 @@ func (c *pgsqlConnection) Disable(name string) error {
 	return err
 }
 
-func (c *pgsqlConnection) Remove(name string) error {
+func (c *postgresConnection) Remove(name string) error {
 	tx, err := c.pool.Begin(context.Background())
 	if err != nil {
 		return err
@@ -151,7 +152,7 @@ func (c *pgsqlConnection) Remove(name string) error {
 	return tx.Commit(context.Background())
 }
 
-func (c *pgsqlConnection) List() (map[string]cron.Job, error) {
+func (c *postgresConnection) List() (map[string]cron.Job, error) {
 	rows, err := c.pool.Query(context.Background(),
 		fmt.Sprintf(`SELECT name, data FROM %s`, c.jobsTableSQL()),
 	)
@@ -177,7 +178,7 @@ func (c *pgsqlConnection) List() (map[string]cron.Job, error) {
 	return out, rows.Err()
 }
 
-func (c *pgsqlConnection) AppendLog(log cron.Log) error {
+func (c *postgresConnection) AppendLog(log cron.Log) error {
 	data, err := json.Marshal(log)
 	if err != nil {
 		return err
@@ -189,7 +190,7 @@ func (c *pgsqlConnection) AppendLog(log cron.Log) error {
 	return err
 }
 
-func (c *pgsqlConnection) History(jobName string, offset, limit int) (int64, []cron.Log, error) {
+func (c *postgresConnection) History(jobName string, offset, limit int) (int64, []cron.Log, error) {
 	var total int64
 	if err := c.pool.QueryRow(context.Background(),
 		fmt.Sprintf(`SELECT count(1) FROM %s WHERE job = $1`, c.logsTableSQL()),
@@ -233,7 +234,7 @@ func (c *pgsqlConnection) History(jobName string, offset, limit int) (int64, []c
 	return total, logs, rows.Err()
 }
 
-func (c *pgsqlConnection) Lock(key string, ttl time.Duration) (bool, error) {
+func (c *postgresConnection) Lock(key string, ttl time.Duration) (bool, error) {
 	_ = ttl
 
 	var one int
@@ -256,7 +257,7 @@ func (c *pgsqlConnection) Lock(key string, ttl time.Duration) (bool, error) {
 	return false, err
 }
 
-func (c *pgsqlConnection) ensureSchema() error {
+func (c *postgresConnection) ensureSchema() error {
 	ctx := context.Background()
 
 	if _, err := c.pool.Exec(ctx, fmt.Sprintf(`CREATE SCHEMA IF NOT EXISTS %s`, quoteIdent(c.schema))); err != nil {
@@ -303,15 +304,15 @@ func (c *pgsqlConnection) ensureSchema() error {
 	return nil
 }
 
-func (c *pgsqlConnection) jobsTableSQL() string {
+func (c *postgresConnection) jobsTableSQL() string {
 	return quoteIdent(c.schema) + "." + quoteIdent(c.jobsTable)
 }
 
-func (c *pgsqlConnection) logsTableSQL() string {
+func (c *postgresConnection) logsTableSQL() string {
 	return quoteIdent(c.schema) + "." + quoteIdent(c.logsTable)
 }
 
-func (c *pgsqlConnection) locksTableSQL() string {
+func (c *postgresConnection) locksTableSQL() string {
 	return quoteIdent(c.schema) + "." + quoteIdent(c.locksTable)
 }
 

@@ -1,24 +1,24 @@
-# cron-pgsql
+# cron-postgres
 
-`cron-pgsql` 是 `github.com/infrago/cron` 的**pgsql 驱动**。
+`cron-postgres` 是 `github.com/infrago/cron` 的 **PostgreSQL 驱动**。
 
 ## 包定位
 
 - 类型：驱动
-- 作用：把 `cron` 模块的统一接口落到 `pgsql` 后端实现
+- 作用：把 `cron` 模块的统一接口落到 PostgreSQL 后端实现
 
 ## 快速接入
 
 ```go
 import (
     _ "github.com/infrago/cron"
-    _ "github.com/infrago/cron-pgsql"
+    _ "github.com/infrago/cron-postgres"
 )
 ```
 
 ```toml
 [cron]
-driver = "pgsql"
+driver = "postgres"
 ```
 
 ## `setting` 专用配置项

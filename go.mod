@@ -1,4 +1,4 @@
-module github.com/infrago/cron-pgsql
+module github.com/infrago/cron-postgres
 
 go 1.25.3
 
